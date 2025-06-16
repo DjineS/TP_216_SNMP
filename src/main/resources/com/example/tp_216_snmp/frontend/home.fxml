@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="com.example.tp_216_snmp.frontend.SnmpController" stylesheets="@style.css">
+    <!-- Top: Header -->
+    <top>
+        <VBox styleClass="header">
+            <Label text="Administrateur Réseau SNMP" styleClass="header-title"/>
+            <Separator/>
+        </VBox>
+    </top>
+
+    <!-- Left: Device List and Network Config -->
+    <left>
+        <VBox styleClass="sidebar" spacing="10" style="-fx-padding: 10;">
+            <Label text="Appareils Détectés" styleClass="sidebar-title"/>
+            <HBox spacing="5" alignment="CENTER_LEFT">
+                <TextField fx:id="subnetField" promptText="Sous-réseau (ex: 192.168.1.0/24)" prefWidth="150"/>
+                <CheckBox fx:id="showNamesCheckBox" text="Noms" onAction="#toggleNames"/>
+            </HBox>
+            <HBox spacing="5" alignment="CENTER_LEFT">
+                <Button fx:id="scanButton" text="Scanner" onAction="#scanNetwork" styleClass="action-button">
+                    <tooltip><Tooltip text="Scanner le réseau pour les appareils SNMP"/></tooltip>
+                </Button>
+                <ProgressIndicator fx:id="scanProgress" visible="false" prefWidth="30" prefHeight="30"/>
+            </HBox>
+            <ListView fx:id="deviceList" prefHeight="400" prefWidth="250"/>
+        </VBox>
+    </left>
+
+    <!-- Center: Navigation and Welcome -->
+    <center>
+        <VBox alignment="CENTER" spacing="20" style="-fx-padding: 20;">
+            <Label text="Bienvenue dans l'Administrateur SNMP" styleClass="welcome-label"/>
+            <Label text="Configurez le sous-réseau, scannez, puis sélectionnez une machine et une opération." styleClass="info-label"/>
+            <GridPane hgap="15" vgap="15" alignment="CENTER">
+                <Button fx:id="getButton" text="Get" onAction="#navigateToGet" styleClass="action-button" GridPane.rowIndex="0" GridPane.columnIndex="0">
+                    <tooltip><Tooltip text="Récupérer la valeur d'un OID spécifique"/></tooltip>
+                </Button>
+                <Button fx:id="getNextButton" text="GetNext" onAction="#navigateToGetNext" styleClass="action-button" GridPane.rowIndex="0" GridPane.columnIndex="1">
+                    <tooltip><Tooltip text="Récupérer la valeur de l'OID suivant"/></tooltip>
+                </Button>
+                <Button fx:id="setButton" text="Set" onAction="#navigateToSet" styleClass="action-button" GridPane.rowIndex="0" GridPane.columnIndex="2">
+                    <tooltip><Tooltip text="Modifier la valeur d'un OID"/></tooltip>
+                </Button>
+                <Button fx:id="statButton" text="Stat" onAction="#navigateToStat" styleClass="action-button" GridPane.rowIndex="1" GridPane.columnIndex="0">
+                    <tooltip><Tooltip text="Afficher les statistiques de la machine"/></tooltip>
+                </Button>
+                <Button fx:id="walkButton" text="Walk" onAction="#navigateToWalk" styleClass="action-button" GridPane.rowIndex="1" GridPane.columnIndex="1">
+                    <tooltip><Tooltip text="Parcourir les OIDs du MIB"/></tooltip>
+                </Button>
+                <Button fx:id="trapButton" text="Trap" onAction="#navigateToTrap" styleClass="action-button" GridPane.rowIndex="1" GridPane.columnIndex="2">
+                    <tooltip><Tooltip text="Configurer ou recevoir des traps SNMP"/></tooltip>
+                </Button>
+            </GridPane>
+        </VBox>
+    </center>
+
+    <!-- Bottom: Status Bar -->
+    <bottom>
+        <HBox styleClass="status-bar" alignment="CENTER_LEFT" style="-fx-padding: 5;">
+            <Label fx:id="statusLabel" text="Prêt"/>
+        </HBox>
+    </bottom>
+</BorderPane>
