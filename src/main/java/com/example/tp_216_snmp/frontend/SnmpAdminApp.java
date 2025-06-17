@@ -15,9 +15,10 @@ public class SnmpAdminApp extends Application {
             throw new IOException("Cannot find FXML file at /com/example/tp_216_snmp/frontend/home.fxml");
         }
         FXMLLoader fxmlLoader = new FXMLLoader(fxmlLocation);
-        Scene scene = new Scene(fxmlLoader.load(), 800, 600);
+        Scene scene = new Scene(fxmlLoader.load(), 1200, 900);
         stage.setTitle("Administrateur Réseau SNMP");
         stage.setScene(scene);
+        stage.setResizable(false);
         stage.show();
     }
 

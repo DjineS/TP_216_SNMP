@@ -3,42 +3,65 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="com.example.tp_216_snmp.frontend.SnmpController" stylesheets="@style.css">
+<BorderPane xmlns="http://javafx.com/javafx"
+            xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.example.tp_216_snmp.frontend.SnmpController"
+            stylesheets="@style.css"
+            maxWidth="1200" maxHeight="900" prefWidth="1200" prefHeight="900" minWidth="1200" minHeight="900">
+
     <!-- Top: Header -->
     <top>
-        <VBox styleClass="header">
-            <Label text="Opération SNMP : Get" styleClass="header-title"/>
+        <VBox styleClass="header" spacing="10" style="-fx-padding: 10;">
+            <HBox alignment="CENTER_LEFT" spacing="20">
+                <Button fx:id="backButton"
+                        text="← Retour"
+                        onAction="#navigateToHome"
+                        styleClass="action-button"
+                        prefWidth="150" prefHeight="40"/>
+                <Label text="Opération SNMP : Statistiques"
+                       styleClass="header-title"
+                       style="-fx-font-size: 24px; -fx-font-weight: bold;"
+                       HBox.hgrow="ALWAYS"
+                       maxWidth="Infinity"/>
+            </HBox>
             <Separator/>
         </VBox>
     </top>
 
-    <!-- Center: Get Operation -->
+    <!-- Center: Formulaire Statistiques -->
     <center>
-        <GridPane hgap="10" vgap="10" alignment="CENTER" style="-fx-padding: 20;">
-            <Label text="Machine :" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="label"/>
-            <Label fx:id="selectedDeviceLabel" text="Aucune machine sélectionnée" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+        <VBox alignment="CENTER" spacing="80" style="-fx-padding: 40; -fx-font-size: 16px;">
+            <GridPane hgap="15" vgap="15" alignment="CENTER" style="-fx-padding: 20;">
 
-            <Label text="OID :" GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="label"/>
-            <TextField fx:id="oidField" promptText="Entrer un OID (ex: 1.3.6.1.2.1.1.1.0)" prefWidth="300" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                <Label text="Machine sélectionnée :" styleClass="label" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                <Label fx:id="selectedDeviceLabel" text="Aucune machine sélectionnée" styleClass="value-label" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
 
-            <HBox spacing="10" alignment="CENTER" GridPane.rowIndex="2" GridPane.columnIndex="0" GridPane.columnSpan="2">
-                <Button fx:id="executeGetButton" text="Exécuter Get" onAction="#executeGet" styleClass="action-button">
-                    <tooltip><Tooltip text="Récupérer la valeur de l'OID"/></tooltip>
-                </Button>
-                <Button fx:id="backButton" text="Retour" onAction="#navigateToHome" styleClass="action-button">
-                    <tooltip><Tooltip text="Retour à l'accueil"/></tooltip>
-                </Button>
+                <Label text="Résultat des statistiques :" styleClass="label" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                <TextArea fx:id="resultArea"
+                          editable="false"
+                          wrapText="true"
+                          prefWidth="500"
+                          prefHeight="350"
+                          style="-fx-control-inner-background: black; -fx-text-fill: lightblue; -fx-font-family: 'Consolas'; -fx-font-size: 16px;"
+                          GridPane.rowIndex="1"
+                          GridPane.columnIndex="1"/>
+
+            </GridPane>
+
+            <HBox spacing="20" alignment="CENTER">
+                <Button fx:id="executeGetButton" text="Exécuter Stat" onAction="#executeStat" styleClass="action-button" prefWidth="200" prefHeight="50"/>
             </HBox>
-
-            <Label text="Résultats :" GridPane.rowIndex="3" GridPane.columnIndex="0" styleClass="label"/>
-            <TextArea fx:id="resultArea" editable="false" prefHeight="200" prefWidth="500" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
-        </GridPane>
+        </VBox>
     </center>
 
     <!-- Bottom: Status Bar -->
     <bottom>
-        <HBox styleClass="status-bar" alignment="CENTER_LEFT" style="-fx-padding: 5;">
-            <Label fx:id="statusLabel" text="Prêt"/>
+        <HBox styleClass="status-bar" alignment="CENTER_LEFT" style="-fx-padding: 8 15 8 15; -fx-background-color: linear-gradient(to right, #222, #444);">
+            <Label fx:id="statusLabel" text="Prêt"
+                   style="-fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;"/>
+            <ProgressIndicator fx:id="progressIndicator" visible="false" prefWidth="24" prefHeight="24" style="-fx-progress-color: #00ff00; -fx-padding: 0 0 0 10;"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="timeLabel" text="--:--:--" style="-fx-text-fill: white; -fx-font-size: 12px;"/>
         </HBox>
     </bottom>
 </BorderPane>

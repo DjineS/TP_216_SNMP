@@ -1,5 +1,9 @@
 package com.example.tp_216_snmp.frontend;
 
+import com.example.tp_216_snmp.backend.model.Device;
+import com.example.tp_216_snmp.backend.network.NetworkScanCallback;
+import com.example.tp_216_snmp.backend.network.NetworkScanner;
+import com.example.tp_216_snmp.backend.snmp.SnmpClient;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -7,91 +11,159 @@ import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
 
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.InterfaceAddress;
-import java.net.NetworkInterface;
-import java.net.SocketException;
-import java.util.ArrayList;
-import java.util.Enumeration;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-
-import org.snmp4j.CommunityTarget;
-import org.snmp4j.PDU;
-import org.snmp4j.Snmp;
-import org.snmp4j.event.ResponseEvent;
-import org.snmp4j.mp.SnmpConstants;
-import org.snmp4j.smi.OID;
-import org.snmp4j.smi.OctetString;
-import org.snmp4j.smi.UdpAddress;
-import org.snmp4j.smi.VariableBinding;
-import org.snmp4j.transport.DefaultUdpTransportMapping;
 
 public class SnmpController {
-    @FXML private ListView<String> deviceList;
+    @FXML private ListView<Device> deviceList;
     @FXML private CheckBox showNamesCheckBox;
     @FXML private Label statusLabel;
     @FXML private Label selectedDeviceLabel;
     @FXML private TextField oidField;
     @FXML private TextField valueField;
     @FXML private TextField subnetField;
+    @FXML private TextField communityField;
     @FXML private TextArea resultArea;
     @FXML private ProgressIndicator scanProgress;
+    @FXML private GridPane buttonGrid; // New reference for button grid
 
-    private ObservableList<String> machineNames = FXCollections.observableArrayList();
-    private ObservableList<String> machineIPs = FXCollections.observableArrayList();
-    private String selectedDevice;
+    @FXML private TextArea trapArea; // TextArea pour afficher les traps
+    @FXML private Button startTrapButton; // Bouton pour démarrer l'écoute
+    @FXML private Button stopTrapButton; // Bouton pour arrêter l'écoute
+    private ObservableList<String> trapMessages = FXCollections.observableArrayList();
+
+    private ObservableList<Device> devices = FXCollections.observableArrayList();
+    private Device selectedDevice;
+    private String community = "uy1";
+    private final NetworkScanner networkScanner;
+    private final SnmpClient snmpClient;
+
+    public SnmpController() {
+        this.snmpClient = new SnmpClient(1000, 2);
+        this.networkScanner = new NetworkScanner(snmpClient);
+    }
 
     @FXML
     public void initialize() {
         if (deviceList != null) {
-            deviceList.setItems(machineNames);
+            deviceList.setItems(devices);
             showNamesCheckBox.setSelected(true);
             deviceList.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
                 selectedDevice = newVal;
                 updateSelectedDeviceLabel();
             });
-            deviceList.setCellFactory(list -> new ListCell<String>() {
+            deviceList.setCellFactory(list -> new ListCell<Device>() {
                 @Override
-                protected void updateItem(String item, boolean empty) {
-                    super.updateItem(item, empty);
-                    if (empty || item == null) {
+                protected void updateItem(Device device, boolean empty) {
+                    super.updateItem(device, empty);
+                    if (empty || device == null) {
                         setText(null);
                         setStyle("");
                     } else {
-                        setText(item);
+                        setText(showNamesCheckBox.isSelected() ? device.getName() : device.getIp());
                         setStyle("-fx-text-fill: green;");
                     }
                 }
             });
-            String subnet = detectLocalSubnet();
+            String subnet = networkScanner.detectLocalSubnet();
             if (subnet != null) {
                 subnetField.setText(subnet);
             }
             addNetworkHost();
+
+            // Bind GridPane spacing to window width
+            if (buttonGrid != null && deviceList.getScene() != null) {
+                buttonGrid.hgapProperty().bind(deviceList.getScene().widthProperty().divide(40));
+                buttonGrid.vgapProperty().bind(deviceList.getScene().heightProperty().divide(30));
+            }
         }
         updateSelectedDeviceLabel();
+
+        if (trapArea != null) {
+            trapArea.setEditable(false);
+            trapArea.setWrapText(true);
+            trapArea.setStyle("-fx-control-inner-background: black; -fx-text-fill: limegreen; -fx-font-family: 'Consolas'; -fx-font-size: 16px;");
+            // Lier la TextArea à la liste des messages
+            trapMessages.addListener((javafx.collections.ListChangeListener.Change<? extends String> c) -> {
+                trapArea.setText(String.join("\n", trapMessages));
+                trapArea.setScrollTop(Double.MAX_VALUE); // Auto-scroll
+            });
+        }
+
+        // Configurer les boutons start/stop
+        if (startTrapButton != null) {
+            startTrapButton.setOnAction(e -> startTrapListener());
+        }
+        if (stopTrapButton != null) {
+            stopTrapButton.setOnAction(e -> stopTrapListener());
+        }
+        stopTrapListener();
+    }
+
+    private void startTrapListener() {
+        if (statusLabel != null) {
+            statusLabel.setText("Démarrage de l'écouteur de traps...");
+        }
+        new Thread(() -> {
+            try {
+                // Use a non-privileged port, e.g., 1162
+                snmpClient.startTrapListener(1162, trapMessage -> Platform.runLater(() -> {
+                    trapMessages.add(trapMessage);
+                    if (statusLabel != null) {
+                        statusLabel.setText("Trap reçu");
+                    }
+                }));
+                Platform.runLater(() -> {
+                    if (statusLabel != null) {
+                        statusLabel.setText("Écouteur de traps démarré sur le port 1162");
+                    }
+                });
+            } catch (IOException e) {
+                Platform.runLater(() -> {
+                    if (statusLabel != null) {
+                        statusLabel.setText("Erreur : " + e.getMessage());
+                    }
+                });
+                System.err.println("Erreur démarrage trap listener: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    private void stopTrapListener() {
+        if (statusLabel != null) {
+            statusLabel.setText("Arrêt de l'écouteur de traps...");
+        }
+        new Thread(() -> {
+            try {
+                snmpClient.stopTrapListener();
+                Platform.runLater(() -> {
+                    if (statusLabel != null) {
+                        statusLabel.setText("Écouteur de traps arrêté");
+                    }
+                });
+            } catch (IOException e) {
+                Platform.runLater(() -> {
+                    if (statusLabel != null) {
+                        statusLabel.setText("Erreur : " + e.getMessage());
+                    }
+                });
+                System.err.println("Erreur arrêt trap listener: " + e.getMessage());
+            }
+        }).start();
     }
 
     private void updateSelectedDeviceLabel() {
         if (selectedDeviceLabel != null) {
-            selectedDeviceLabel.setText(selectedDevice != null ? selectedDevice : "Aucune machine sélectionnée");
+            selectedDeviceLabel.setText(selectedDevice != null ? selectedDevice.getName() : "Aucune machine sélectionnée");
         }
     }
 
     @FXML
     private void toggleNames() {
-        if (showNamesCheckBox.isSelected()) {
-            deviceList.setItems(machineNames);
-        } else {
-            deviceList.setItems(machineIPs);
-        }
-        deviceList.getSelectionModel().clearSelection();
+        deviceList.refresh();
     }
 
     @FXML
@@ -101,280 +173,56 @@ public class SnmpController {
         }
         statusLabel.setText("Scan du réseau en cours...");
 
-        String subnetInput = subnetField.getText();
-        if (subnetInput == null || subnetInput.trim().isEmpty()) {
-            subnetInput = detectLocalSubnet();
-            if (subnetInput == null) {
+        String subnet = subnetField.getText();
+        if (subnet == null || subnet.trim().isEmpty()) {
+            subnet = networkScanner.detectLocalSubnet();
+            if (subnet == null) {
                 statusLabel.setText("Erreur : Impossible de détecter le sous-réseau.");
                 scanProgress.setVisible(false);
                 addNetworkHost();
                 return;
             }
-            subnetField.setText(subnetInput);
+            subnetField.setText(subnet);
         }
 
-        String[] parts = subnetInput.split("/");
-        if (parts.length != 2) {
-            statusLabel.setText("Erreur : Format de sous-réseau invalide (ex: 192.168.1.0/24).");
-            scanProgress.setVisible(false);
-            addNetworkHost();
-            return;
-        }
-        String baseIp = parts[0];
-        int prefixLength;
-        try {
-            prefixLength = Integer.parseInt(parts[1]);
-        } catch (NumberFormatException e) {
-            statusLabel.setText("Erreur : Masque de sous-réseau invalide.");
-            scanProgress.setVisible(false);
-            addNetworkHost();
-            return;
-        }
+        community = communityField != null && !communityField.getText().trim().isEmpty() ?
+                communityField.getText().trim() : "uy1";
 
-        List<String> ipRange = calculateIpRange(baseIp, prefixLength);
-        if (ipRange.isEmpty()) {
-            statusLabel.setText("Erreur : Plage d'IP invalide.");
-            scanProgress.setVisible(false);
-            addNetworkHost();
-            return;
-        }
-
-        ExecutorService executor = Executors.newFixedThreadPool(10);
-        List<String> discoveredIPs = new ArrayList<>();
-        List<String> discoveredNames = new ArrayList<>();
-        int total = ipRange.size();
-        int[] current = {0};
-
-        String[] hostInfo = getNetworkHostInfo();
-        if (hostInfo != null) {
-            synchronized (discoveredIPs) {
-                discoveredIPs.add(hostInfo[0]);
-                discoveredNames.add(hostInfo[1]);
+        networkScanner.scanNetwork(subnet, community, new NetworkScanCallback() {
+            @Override
+            public void onProgress(int current, int total) {
+                Platform.runLater(() -> statusLabel.setText(String.format("Scan en cours : %d/%d adresses", current, total)));
             }
-        }
 
-        for (String ip : ipRange) {
-            if (hostInfo != null && ip.equals(hostInfo[0])) continue;
-
-            executor.submit(() -> {
-                String name = getDeviceName(ip);
-                if (name != null) {
-                    synchronized (discoveredIPs) {
-                        discoveredIPs.add(ip);
-                        discoveredNames.add(name.isEmpty() ? ip : name);
-                    }
-                }
-                synchronized (current) {
-                    current[0]++;
-                    Platform.runLater(() -> statusLabel.setText(String.format("Scan en cours : %d/%d adresses", current[0], total)));
-                }
-            });
-        }
-
-        executor.shutdown();
-        new Thread(() -> {
-            try {
-                executor.awaitTermination(60, TimeUnit.SECONDS);
+            @Override
+            public void onComplete(List<Device> scannedDevices) {
                 Platform.runLater(() -> {
-                    synchronized (machineIPs) {
-                        machineIPs.setAll(discoveredIPs);
-                        machineNames.setAll(discoveredNames);
-                    }
-                    if (showNamesCheckBox.isSelected()) {
-                        deviceList.setItems(machineNames);
-                    } else {
-                        deviceList.setItems(machineIPs);
-                    }
+                    devices.setAll(scannedDevices);
                     scanProgress.setVisible(false);
-                    statusLabel.setText(discoveredIPs.size() == 1 && hostInfo != null ?
+                    statusLabel.setText(scannedDevices.size() == 1 && scannedDevices.get(0).getName().equals("Hôte Réseau") ?
                             "Scan terminé : seul l'hôte réseau trouvé." :
-                            "Scan terminé : " + discoveredIPs.size() + " appareils trouvés.");
-                    System.out.println("Scan terminé - IPs: " + machineIPs + ", Names: " + machineNames);
-                });
-            } catch (InterruptedException e) {
-                Platform.runLater(() -> {
-                    statusLabel.setText("Erreur : Scan interrompu.");
-                    scanProgress.setVisible(false);
+                            "Scan terminé : " + scannedDevices.size() + " appareils trouvés.");
+                    System.out.println("Scan terminé - Devices: " + devices);
                 });
             }
-        }).start();
+
+            @Override
+            public void onError(String message) {
+                Platform.runLater(() -> {
+                    statusLabel.setText("Erreur : " + message);
+                    scanProgress.setVisible(false);
+                    addNetworkHost();
+                });
+            }
+        });
     }
 
     private void addNetworkHost() {
-        String[] hostInfo = getNetworkHostInfo();
-        if (hostInfo != null) {
-            synchronized (machineIPs) {
-                machineIPs.setAll(hostInfo[0]);
-                machineNames.setAll(hostInfo[1]);
-            }
-            if (showNamesCheckBox.isSelected()) {
-                deviceList.setItems(machineNames);
-            } else {
-                deviceList.setItems(machineIPs);
-            }
+        Device host = networkScanner.getNetworkHost(community);
+        if (host != null) {
+            devices.setAll(host);
             statusLabel.setText("Hôte réseau ajouté.");
-            System.out.println("Hôte ajouté - IPs: " + machineIPs + ", Names: " + machineNames);
-        }
-    }
-
-    private String[] getNetworkHostInfo() {
-        try {
-            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
-            while (interfaces.hasMoreElements()) {
-                NetworkInterface ni = interfaces.nextElement();
-                if (ni.isLoopback() || !ni.isUp()) continue;
-                for (InterfaceAddress ia : ni.getInterfaceAddresses()) {
-                    InetAddress addr = ia.getAddress();
-                    if (addr.isLoopbackAddress() || addr instanceof java.net.Inet6Address) continue;
-                    String ip = addr.getHostAddress();
-                    String name = getDeviceName(ip);
-                    if (name == null) {
-                        name = addr.getHostName();
-                        if (name.equals(ip)) name = "Hôte Réseau";
-                    }
-                    System.out.println("Host IP: " + ip + ", Name: " + name);
-                    return new String[]{ip, name.isEmpty() ? ip : name};
-                }
-            }
-        } catch (SocketException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    private String detectLocalSubnet() {
-        try {
-            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
-            while (interfaces.hasMoreElements()) {
-                NetworkInterface ni = interfaces.nextElement();
-                if (ni.isLoopback() || !ni.isUp()) continue;
-                for (InterfaceAddress ia : ni.getInterfaceAddresses()) {
-                    InetAddress addr = ia.getAddress();
-                    if (addr.isLoopbackAddress() || addr instanceof java.net.Inet6Address) continue;
-                    String ip = addr.getHostAddress();
-                    int prefixLength = ia.getNetworkPrefixLength();
-                    String[] parts = ip.split("\\.");
-                    if (parts.length == 4) {
-                        int[] ipParts = new int[4];
-                        for (int i = 0; i < 4; i++) {
-                            ipParts[i] = Integer.parseInt(parts[i]);
-                        }
-                        int mask = -1 << (32 - prefixLength);
-                        StringBuilder network = new StringBuilder();
-                        for (int i = 0; i < 4; i++) {
-                            network.append((ipParts[i] & (mask >>> (24 - 8 * i))) & 0xFF);
-                            if (i < 3) network.append(".");
-                        }
-                        return network.toString() + "/" + prefixLength;
-                    }
-                }
-            }
-        } catch (SocketException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    private List<String> calculateIpRange(String baseIp, int prefixLength) {
-        List<String> ipRange = new ArrayList<>();
-        try {
-            String[] parts = baseIp.split("\\.");
-            if (parts.length != 4) return ipRange;
-            int[] ipParts = new int[4];
-            for (int i = 0; i < 4; i++) {
-                ipParts[i] = Integer.parseInt(parts[i]);
-            }
-            int mask = -1 << (32 - prefixLength);
-            long network = ((ipParts[0] & 0xFFL) << 24) | ((ipParts[1] & 0xFFL) << 16) |
-                    ((ipParts[2] & 0xFFL) << 8) | (ipParts[3] & 0xFFL);
-            network &= mask;
-            long broadcast = network | (~mask & 0xFFFFFFFFL);
-            for (long ip = network + 1; ip < broadcast; ip++) {
-                ipRange.add(String.format("%d.%d.%d.%d",
-                        (ip >> 24) & 0xFF, (ip >> 16) & 0xFF, (ip >> 8) & 0xFF, ip & 0xFF));
-            }
-        } catch (NumberFormatException e) {
-            e.printStackTrace();
-        }
-        return ipRange;
-    }
-
-    private String getDeviceName(String ip) {
-        return performSnmpGet(ip, "1.3.6.1.2.1.1.5.0"); // sysName.0
-    }
-
-    private String performSnmpGet(String ip, String oid) {
-        try {
-            System.out.println("SNMP GET: IP=" + ip + ", OID=" + oid);
-            Snmp snmp = new Snmp(new DefaultUdpTransportMapping());
-            snmp.listen();
-
-            CommunityTarget target = new CommunityTarget();
-            target.setCommunity(new OctetString("uy1"));
-            target.setAddress(new UdpAddress(InetAddress.getByName(ip), 161));
-            target.setVersion(SnmpConstants.version2c);
-            target.setTimeout(1000);
-            target.setRetries(2);
-
-            PDU pdu = new PDU();
-            pdu.add(new VariableBinding(new OID(oid)));
-            pdu.setType(PDU.GET);
-
-            ResponseEvent response = snmp.send(pdu, target);
-            snmp.close();
-
-            if (response != null && response.getResponse() != null && response.getResponse().getErrorStatus() == PDU.noError) {
-                String value = response.getResponse().get(0).getVariable().toString();
-                System.out.println("Response from " + ip + ": " + value);
-                return value.isEmpty() ? ip : value;
-            } else {
-                String error = response != null && response.getResponse() != null ?
-                        response.getResponse().getErrorStatusText() : "Timeout";
-                System.out.println("No response from " + ip + ": " + error);
-                return null;
-            }
-        } catch (IOException e) {
-            System.out.println("Error performing SNMP GET on " + ip + ": " + e.getMessage());
-            return null;
-        }
-    }
-
-    private String getIpForSelectedDevice() {
-        if (selectedDevice == null) {
-            System.out.println("Erreur : selectedDevice est null");
-            return null;
-        }
-        System.out.println("selectedDevice: " + selectedDevice);
-        System.out.println("machineNames: " + machineNames);
-        System.out.println("machineIPs: " + machineIPs);
-
-        int index = machineNames.indexOf(selectedDevice);
-        if (index >= 0 && index < machineIPs.size()) {
-            String ip = machineIPs.get(index);
-            System.out.println("Résolution nom -> IP: " + selectedDevice + " -> " + ip);
-            return ip;
-        }
-
-        if (machineIPs.contains(selectedDevice)) {
-            System.out.println("selectedDevice est déjà une IP: " + selectedDevice);
-            return selectedDevice;
-        }
-
-        try {
-            InetAddress.getByName(selectedDevice);
-            if (machineNames.contains(selectedDevice)) {
-                index = machineNames.indexOf(selectedDevice);
-                if (index >= 0 && index < machineIPs.size()) {
-                    String ip = machineIPs.get(index);
-                    System.out.println("Résolution via machineNames: " + selectedDevice + " -> " + ip);
-                    return ip;
-                }
-            }
-            System.out.println("selectedDevice est une IP valide mais non listée: " + selectedDevice);
-            return selectedDevice;
-        } catch (IOException e) {
-            System.out.println("Erreur : selectedDevice n'est ni un nom ni une IP valide: " + selectedDevice);
-            return null;
+            System.out.println("Hôte ajouté - Device: " + host);
         }
     }
 
@@ -387,13 +235,6 @@ public class SnmpController {
             return;
         }
 
-        String ip = getIpForSelectedDevice();
-        if (ip == null) {
-            resultArea.setText("Erreur : Impossible de résoudre l'adresse IP de la machine sélectionnée (" + selectedDevice + ").");
-            statusLabel.setText("Erreur : IP invalide");
-            return;
-        }
-
         String oid = oidField.getText().trim();
         if (!oid.matches("^\\.?[0-9.]+$")) {
             resultArea.setText("Erreur : Format d'OID invalide (ex: 1.3.6.1.2.1.1.1.0).");
@@ -402,16 +243,24 @@ public class SnmpController {
         }
 
         statusLabel.setText("Envoi de la requête SNMP GET...");
-        resultArea.setText("Requête en cours pour " + selectedDevice + " (IP: " + ip + ")...");
+        resultArea.setText("Requête en cours pour " + selectedDevice.getName() + " (IP: " + selectedDevice.getIp() + ") avec communauté " + community + "...");
 
         new Thread(() -> {
-            String result = performSnmpGet(ip, oid);
+            String result;
+            try {
+                result = snmpClient.performGet(selectedDevice.getIp(), oid, community);
+            } catch (IOException e) {
+                result = null;
+                System.err.println("Erreur SNMP: " + e.getMessage());
+            }
+            String finalResult = result;
             Platform.runLater(() -> {
-                if (result != null) {
-                    resultArea.setText("Résultat pour " + selectedDevice + " (OID " + oid + "):\n" + result);
+                if (finalResult != null) {
+//                    resultArea.setText("Résultat pour " + selectedDevice.getName() + " (OID " + oid + "):\n" + finalResult);
+                    resultArea.setText(finalResult);
                     statusLabel.setText("Requête réussie");
                 } else {
-                    resultArea.setText("Erreur : Aucune réponse pour l'OID " + oid + " sur " + selectedDevice + " (IP: " + ip + ")");
+                    resultArea.setText("Erreur : Aucune réponse pour l'OID " + oid + " sur " + selectedDevice.getName() + " (IP: " + selectedDevice.getIp() + ") avec communauté " + community);
                     statusLabel.setText("Erreur : Requête échouée");
                 }
             });
@@ -423,9 +272,70 @@ public class SnmpController {
         navigateTo("get.fxml", "Opération SNMP : Get");
     }
 
+
+    @FXML
+    private void executeGetNext() {
+        if (selectedDevice == null || oidField.getText().isEmpty()) {
+            resultArea.setText("Sélectionnez une machine et entrez un OID.");
+            return;
+        }
+
+        String oid = oidField.getText().trim();
+        statusLabel.setText("Requête GETNEXT en cours...");
+        resultArea.setText("Requête GETNEXT en cours...");
+
+        new Thread(() -> {
+            String result = null;
+            try {
+                result = snmpClient.performGetNext(selectedDevice.getIp(), oid, community);
+            } catch (IOException e) {
+                System.err.println("Erreur GETNEXT: " + e.getMessage());
+            }
+
+            final String output = result;
+            Platform.runLater(() -> {
+                if (output != null) {
+                    resultArea.setText(output);
+                    statusLabel.setText("GETNEXT réussi");
+                } else {
+                    resultArea.setText("Aucune réponse.");
+                    statusLabel.setText("GETNEXT échoué");
+                }
+            });
+        }).start();
+    }
+
     @FXML
     private void navigateToGetNext() {
         navigateTo("getNext.fxml", "Opération SNMP : GetNext");
+    }
+
+
+    @FXML
+    private void executeSetMessage() {
+        if (selectedDevice == null || oidField.getText().isEmpty() || valueField.getText().isEmpty()) {
+            resultArea.setText("Veuillez remplir l'OID et la valeur.");
+            return;
+        }
+
+        String oid = oidField.getText().trim();
+        String value = valueField.getText().trim();
+        resultArea.setText("Envoi de Set...");
+
+        new Thread(() -> {
+            boolean success = false;
+            try {
+                success = snmpClient.performSet(selectedDevice.getIp(), oid, value, community);
+            } catch (IOException e) {
+                System.err.println("Erreur Set: " + e.getMessage());
+            }
+
+            boolean finalSuccess = success;
+            Platform.runLater(() -> {
+                resultArea.setText(finalSuccess ? "Set réussi." : "Set échoué.");
+                statusLabel.setText(finalSuccess ? "OK" : "Erreur");
+            });
+        }).start();
     }
 
     @FXML
@@ -433,15 +343,89 @@ public class SnmpController {
         navigateTo("set.fxml", "Opération SNMP : Set");
     }
 
+
+    @FXML
+    private void executeStat() {
+        if (selectedDevice == null) {
+            resultArea.setText("Veuillez sélectionner une machine.");
+            return;
+        }
+
+        resultArea.setText("Récupération des statistiques...");
+        new Thread(() -> {
+            List<String> stats = null;
+            try {
+                stats = snmpClient.performStat(selectedDevice.getIp(), community);
+            } catch (IOException e) {
+                System.err.println("Erreur Stat: " + e.getMessage());
+            }
+
+            List<String> finalStats = stats;
+            Platform.runLater(() -> {
+                if (finalStats != null) {
+                    resultArea.setText(String.join("\n", finalStats));
+                    statusLabel.setText("Statistiques reçues");
+                } else {
+                    resultArea.setText("Aucune donnée.");
+                    statusLabel.setText("Erreur Stat");
+                }
+            });
+        }).start();
+    }
+
     @FXML
     private void navigateToStat() {
         navigateTo("stat.fxml", "Opération SNMP : Stat");
+    }
+
+
+
+    @FXML
+    private void executeWalk() {
+        if (selectedDevice == null || oidField == null || oidField.getText().isEmpty()) {
+            resultArea.setText("Veuillez sélectionner une machine et entrer un OID.");
+            statusLabel.setText("Erreur : paramètres manquants");
+            return;
+        }
+
+        String oid = oidField.getText().trim();
+        if (!oid.matches("^\\.?[0-9.]+$")) {
+            resultArea.setText("Erreur : Format d'OID invalide (ex: 1.3.6.1.2.1.1).");
+            statusLabel.setText("Erreur : OID invalide");
+            return;
+        }
+
+        statusLabel.setText("Envoi de la requête SNMP WALK...");
+        resultArea.setText("Requête en cours pour " + selectedDevice.getName() + " (IP: " + selectedDevice.getIp() + ") avec communauté " + community + "...");
+
+        new Thread(() -> {
+            List<String> results;
+            try {
+                results = snmpClient.performWalk(selectedDevice.getIp(), oid, community);
+            } catch (IOException e) {
+                results = null;
+                System.err.println("Erreur SNMP Walk: " + e.getMessage());
+            }
+
+            List<String> finalResults = results;
+            Platform.runLater(() -> {
+                if (finalResults != null && !finalResults.isEmpty()) {
+                    resultArea.setText(String.join("\n", finalResults));
+                    statusLabel.setText("Requête Walk réussie");
+                } else {
+                    resultArea.setText("Erreur : Aucune réponse ou fin du Walk.");
+                    statusLabel.setText("Erreur : Requête Walk échouée");
+                }
+            });
+        }).start();
     }
 
     @FXML
     private void navigateToWalk() {
         navigateTo("walk.fxml", "Opération SNMP : Walk");
     }
+
+
 
     @FXML
     private void navigateToTrap() {
@@ -454,37 +438,63 @@ public class SnmpController {
     }
 
     private void navigateTo(String fxmlFile, String title) {
+        if (selectedDevice == null) {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setTitle("Avertissement");
+            alert.setHeaderText("Aucune machine sélectionnée");
+            alert.setContentText("Veuillez sélectionner une machine avant de continuer.");
+            alert.showAndWait();
+            return;
+        }
+
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/tp_216_snmp/frontend/" + fxmlFile));
-            Scene scene = new Scene(loader.load(), 800, 600);
-            Stage stage = (Stage) (deviceList != null ? deviceList.getScene().getWindow() : resultArea.getScene().getWindow());
+            Scene scene = new Scene(loader.load(), 1200, 900);
+            // Get the stage from any available node or the current scene
+            Stage stage = null;
+            if (deviceList != null && deviceList.getScene() != null) {
+                stage = (Stage) deviceList.getScene().getWindow();
+            } else if (resultArea != null && resultArea.getScene() != null) {
+                stage = (Stage) resultArea.getScene().getWindow();
+            } else if (statusLabel != null && statusLabel.getScene() != null) {
+                stage = (Stage) statusLabel.getScene().getWindow();
+            }
+            if (stage == null) {
+                throw new IllegalStateException("Unable to find the current stage.");
+            }
             stage.setScene(scene);
             stage.setTitle(title);
             SnmpController controller = loader.getController();
-            if (selectedDevice != null) {
-                controller.setSelectedDevice(selectedDevice);
-            }
+            controller.setSelectedDevice(selectedDevice);
+            controller.setCommunity(community);
         } catch (IOException e) {
             if (statusLabel != null) {
                 statusLabel.setText("Erreur : Impossible de charger " + fxmlFile);
             }
-            e.printStackTrace();
+            System.err.println("Erreur de navigation: " + e.getMessage());
         }
     }
 
-    public void setSelectedDevice(String device) {
+    public void setSelectedDevice(Device device) {
         this.selectedDevice = device;
         updateSelectedDeviceLabel();
     }
 
+    public void setCommunity(String community) {
+        this.community = community != null && !community.trim().isEmpty() ? community.trim() : "uy1";
+        if (communityField != null) {
+            communityField.setText(this.community);
+        }
+    }
+
     @FXML
     private void executeSet() {
-        if (selectedDevice != null && oidField != null && !oidField.getText().isEmpty() && valueField != null && !valueField.getText().isEmpty()) {
-            resultArea.setText("Exécution de Set sur " + selectedDevice + " avec OID " + oidField.getText() + " et valeur " + valueField.getText());
-            statusLabel.setText("Requête envoyée...");
-        } else {
+        if (selectedDevice == null || oidField == null || oidField.getText().isEmpty() || valueField == null || valueField.getText().isEmpty()) {
             resultArea.setText("Veuillez sélectionner une machine, entrer un OID et une valeur.");
             statusLabel.setText("Erreur : paramètres manquants");
+            return;
         }
+        resultArea.setText("Exécution de Set sur " + selectedDevice.getName() + " avec OID " + oidField.getText() + " et valeur " + valueField.getText());
+        statusLabel.setText("Requête envoyée...");
     }
 }
