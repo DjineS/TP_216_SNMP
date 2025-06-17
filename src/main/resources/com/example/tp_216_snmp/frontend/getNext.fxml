@@ -6,8 +6,7 @@
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.example.tp_216_snmp.frontend.SnmpController"
-            stylesheets="@style.css"
-            maxWidth="1200" maxHeight="900" prefWidth="1200" prefHeight="900" minWidth="1200" minHeight="900">
+            stylesheets="@style.css">
 
     <!-- Top: Header -->
     <top>
@@ -17,7 +16,7 @@
                         text="← Retour"
                         onAction="#navigateToHome"
                         styleClass="action-button"
-                        prefWidth="150" prefHeight="40"/>
+                        minWidth="100" minHeight="40"/>
                 <Label text="Opération SNMP : GetNext"
                        styleClass="header-title"
                        style="-fx-font-size: 24px; -fx-font-weight: bold;"
@@ -28,33 +27,35 @@
         </VBox>
     </top>
 
-
-
-    <!-- Center: Formulaire Get -->
+    <!-- Center: Formulaire GetNext -->
     <center>
-        <VBox alignment="CENTER" spacing="80" style="-fx-padding: 40; -fx-font-size: 16px;">
+        <VBox alignment="CENTER" spacing="40" style="-fx-padding: 40; -fx-font-size: 16px;">
             <GridPane hgap="15" vgap="15" alignment="CENTER" style="-fx-padding: 20;">
+                <columnConstraints>
+                    <ColumnConstraints percentWidth="35"/>
+                    <ColumnConstraints percentWidth="65"/>
+                </columnConstraints>
 
                 <Label text="Machine sélectionnée :" styleClass="label" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
                 <Label fx:id="selectedDeviceLabel" text="Aucune machine sélectionnée" styleClass="value-label" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
 
                 <Label text="OID à interroger :" styleClass="label" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-                <TextField fx:id="oidField" promptText="Ex: 1.3.6.1.2.1.1.1.0" prefWidth="400" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                <TextField fx:id="oidField" promptText="Ex: 1.3.6.1.2.1.1.1.0" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
 
                 <Label text="Résultat :" styleClass="label" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
                 <TextArea fx:id="resultArea"
                           editable="false"
                           wrapText="true"
-                          prefWidth="500"
-                          prefHeight="300"
                           style="-fx-control-inner-background: black; -fx-text-fill: limegreen; -fx-font-family: 'Consolas'; -fx-font-size: 16px;"
-                          GridPane.rowIndex="2"
-                          GridPane.columnIndex="1"/>
-
+                          GridPane.rowIndex="2" GridPane.columnIndex="1"/>
             </GridPane>
 
             <HBox spacing="20" alignment="CENTER">
-                <Button fx:id="executeGetButton" text="Exécuter GetNext" onAction="#executeGetNext" styleClass="action-button" prefWidth="200" prefHeight="50"/>
+                <Button fx:id="executeGetButton"
+                        text="Exécuter GetNext"
+                        onAction="#executeGetNext"
+                        styleClass="action-button"
+                        minWidth="180" minHeight="50"/>
             </HBox>
         </VBox>
     </center>

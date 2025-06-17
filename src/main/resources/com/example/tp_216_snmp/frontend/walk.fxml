@@ -7,7 +7,7 @@
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.example.tp_216_snmp.frontend.SnmpController"
             stylesheets="@style.css"
-            maxWidth="1200" maxHeight="900" prefWidth="1200" prefHeight="900" minWidth="1200" minHeight="900">
+            prefWidth="1200" prefHeight="900">
 
     <!-- Top: Header -->
     <top>
@@ -28,9 +28,7 @@
         </VBox>
     </top>
 
-
-
-    <!-- Center: Formulaire Get -->
+    <!-- Center: Formulaire Walk -->
     <center>
         <VBox alignment="CENTER" spacing="80" style="-fx-padding: 40; -fx-font-size: 16px;">
             <GridPane hgap="15" vgap="15" alignment="CENTER" style="-fx-padding: 20;">
@@ -55,19 +53,20 @@
                           style="-fx-control-inner-background: black; -fx-text-fill: limegreen; -fx-font-family: 'Consolas'; -fx-font-size: 16px;"
                           GridPane.rowIndex="2"
                           GridPane.columnIndex="1"/>
-
             </GridPane>
 
             <HBox spacing="20" alignment="CENTER">
-                <Button fx:id="executeGetButton" text="Exécuter Walk" onAction="#executeWalk" styleClass="action-button" prefWidth="200" prefHeight="50"/>
+                <Button fx:id="executeWalkButton" text="Exécuter Walk" onAction="#executeWalk" styleClass="action-button" prefWidth="200" prefHeight="50"/>
             </HBox>
         </VBox>
     </center>
 
     <!-- Bottom: Status Bar -->
     <bottom>
-        <HBox styleClass="status-bar" alignment="CENTER_LEFT" style="-fx-padding: 5;">
-            <Label fx:id="statusLabel" text="Prêt"/>
+        <HBox styleClass="status-bar" alignment="CENTER_LEFT" style="-fx-padding: 8 15; -fx-background-color: #333;">
+            <Label fx:id="statusLabel" text="Prêt" style="-fx-text-fill: white; -fx-font-weight: bold;"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <ProgressIndicator fx:id="progressIndicator" visible="false" prefWidth="24" prefHeight="24"/>
         </HBox>
     </bottom>
 </BorderPane>

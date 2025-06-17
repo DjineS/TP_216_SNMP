@@ -7,7 +7,7 @@
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.example.tp_216_snmp.frontend.SnmpController"
             stylesheets="@style.css"
-            maxWidth="1200" maxHeight="900" prefWidth="1200" prefHeight="900" minWidth="1200" minHeight="900">
+            prefWidth="1200" prefHeight="900">
 
     <!-- Top: Header -->
     <top>
@@ -32,12 +32,15 @@
     <center>
         <VBox alignment="CENTER" spacing="20" style="-fx-padding: 40; -fx-font-size: 16px;">
             <Label text="Traps reçus :" styleClass="label"/>
-            <TextArea fx:id="trapArea"
-                      editable="false"
-                      wrapText="true"
-                      prefWidth="1000"
-                      prefHeight="600"
-                      style="-fx-control-inner-background: black; -fx-text-fill: limegreen; -fx-font-family: 'Consolas'; -fx-font-size: 16px;"/>
+
+            <VBox VBox.vgrow="ALWAYS">
+                <TextArea fx:id="trapArea"
+                          editable="false"
+                          wrapText="true"
+                          style="-fx-control-inner-background: black; -fx-text-fill: limegreen; -fx-font-family: 'Consolas'; -fx-font-size: 16px;"
+                          VBox.vgrow="ALWAYS"/>
+            </VBox>
+
             <HBox spacing="20" alignment="CENTER">
                 <Button fx:id="startTrapButton"
                         text="Démarrer l'écoute"

@@ -28,13 +28,12 @@ public class SnmpController {
     @FXML private TextField communityField;
     @FXML private TextArea resultArea;
     @FXML private ProgressIndicator scanProgress;
-    @FXML private GridPane buttonGrid; // New reference for button grid
+    @FXML private GridPane buttonGrid;
+    @FXML private TextArea trapArea;
+    @FXML private Button startTrapButton;
+    @FXML private Button stopTrapButton;
 
-    @FXML private TextArea trapArea; // TextArea pour afficher les traps
-    @FXML private Button startTrapButton; // Bouton pour démarrer l'écoute
-    @FXML private Button stopTrapButton; // Bouton pour arrêter l'écoute
     private ObservableList<String> trapMessages = FXCollections.observableArrayList();
-
     private ObservableList<Device> devices = FXCollections.observableArrayList();
     private Device selectedDevice;
     private String community = "uy1";
@@ -72,9 +71,9 @@ public class SnmpController {
             if (subnet != null) {
                 subnetField.setText(subnet);
             }
-            addNetworkHost();
+            // Ne pas appeler addNetworkHost() ici pour éviter d'écraser un scan existant
+            // addNetworkHost();
 
-            // Bind GridPane spacing to window width
             if (buttonGrid != null && deviceList.getScene() != null) {
                 buttonGrid.hgapProperty().bind(deviceList.getScene().widthProperty().divide(40));
                 buttonGrid.vgapProperty().bind(deviceList.getScene().heightProperty().divide(30));
@@ -86,14 +85,12 @@ public class SnmpController {
             trapArea.setEditable(false);
             trapArea.setWrapText(true);
             trapArea.setStyle("-fx-control-inner-background: black; -fx-text-fill: limegreen; -fx-font-family: 'Consolas'; -fx-font-size: 16px;");
-            // Lier la TextArea à la liste des messages
             trapMessages.addListener((javafx.collections.ListChangeListener.Change<? extends String> c) -> {
                 trapArea.setText(String.join("\n", trapMessages));
-                trapArea.setScrollTop(Double.MAX_VALUE); // Auto-scroll
+                trapArea.setScrollTop(Double.MAX_VALUE);
             });
         }
 
-        // Configurer les boutons start/stop
         if (startTrapButton != null) {
             startTrapButton.setOnAction(e -> startTrapListener());
         }
@@ -103,13 +100,20 @@ public class SnmpController {
         stopTrapListener();
     }
 
+    // Nouvelle méthode pour définir la liste des appareils
+    public void setDevices(List<Device> devices) {
+        this.devices.setAll(devices);
+        if (deviceList != null) {
+            deviceList.refresh();
+        }
+    }
+
     private void startTrapListener() {
         if (statusLabel != null) {
             statusLabel.setText("Démarrage de l'écouteur de traps...");
         }
         new Thread(() -> {
             try {
-                // Use a non-privileged port, e.g., 1162
                 snmpClient.startTrapListener(1162, trapMessage -> Platform.runLater(() -> {
                     trapMessages.add(trapMessage);
                     if (statusLabel != null) {
@@ -157,7 +161,7 @@ public class SnmpController {
 
     private void updateSelectedDeviceLabel() {
         if (selectedDeviceLabel != null) {
-            selectedDeviceLabel.setText(selectedDevice != null ? selectedDevice.getName() : "Aucune machine sélectionnée");
+            selectedDeviceLabel.setText(selectedDevice != null ? selectedDevice.getName() + '(' + selectedDevice.getIp() + ')' : "Aucune machine sélectionnée");
         }
     }
 
@@ -256,7 +260,6 @@ public class SnmpController {
             String finalResult = result;
             Platform.runLater(() -> {
                 if (finalResult != null) {
-//                    resultArea.setText("Résultat pour " + selectedDevice.getName() + " (OID " + oid + "):\n" + finalResult);
                     resultArea.setText(finalResult);
                     statusLabel.setText("Requête réussie");
                 } else {
@@ -271,7 +274,6 @@ public class SnmpController {
     private void navigateToGet() {
         navigateTo("get.fxml", "Opération SNMP : Get");
     }
-
 
     @FXML
     private void executeGetNext() {
@@ -310,7 +312,6 @@ public class SnmpController {
         navigateTo("getNext.fxml", "Opération SNMP : GetNext");
     }
 
-
     @FXML
     private void executeSetMessage() {
         if (selectedDevice == null || oidField.getText().isEmpty() || valueField.getText().isEmpty()) {
@@ -342,7 +343,6 @@ public class SnmpController {
     private void navigateToSet() {
         navigateTo("set.fxml", "Opération SNMP : Set");
     }
-
 
     @FXML
     private void executeStat() {
@@ -377,8 +377,6 @@ public class SnmpController {
     private void navigateToStat() {
         navigateTo("stat.fxml", "Opération SNMP : Stat");
     }
-
-
 
     @FXML
     private void executeWalk() {
@@ -425,8 +423,6 @@ public class SnmpController {
         navigateTo("walk.fxml", "Opération SNMP : Walk");
     }
 
-
-
     @FXML
     private void navigateToTrap() {
         navigateTo("trap.fxml", "Opération SNMP : Trap");
@@ -434,11 +430,11 @@ public class SnmpController {
 
     @FXML
     private void navigateToHome() {
-        navigateTo("home.fxml", "Administrateur Réseau SNMP");
+        navigateTo("admin.fxml", "Administrateur Réseau SNMP");
     }
 
     private void navigateTo(String fxmlFile, String title) {
-        if (selectedDevice == null) {
+        if (selectedDevice == null && !fxmlFile.equals("admin.fxml")) {
             Alert alert = new Alert(Alert.AlertType.WARNING);
             alert.setTitle("Avertissement");
             alert.setHeaderText("Aucune machine sélectionnée");
@@ -450,7 +446,6 @@ public class SnmpController {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/tp_216_snmp/frontend/" + fxmlFile));
             Scene scene = new Scene(loader.load(), 1200, 900);
-            // Get the stage from any available node or the current scene
             Stage stage = null;
             if (deviceList != null && deviceList.getScene() != null) {
                 stage = (Stage) deviceList.getScene().getWindow();
@@ -465,8 +460,15 @@ public class SnmpController {
             stage.setScene(scene);
             stage.setTitle(title);
             SnmpController controller = loader.getController();
-            controller.setSelectedDevice(selectedDevice);
+            // Passer l'appareil sélectionné et la communauté
+            if (selectedDevice != null) {
+                controller.setSelectedDevice(selectedDevice);
+            }
             controller.setCommunity(community);
+            // Passer la liste des appareils si on navigue vers admin.fxml
+            if (fxmlFile.equals("admin.fxml")) {
+                controller.setDevices(devices);
+            }
         } catch (IOException e) {
             if (statusLabel != null) {
                 statusLabel.setText("Erreur : Impossible de charger " + fxmlFile);
@@ -478,6 +480,9 @@ public class SnmpController {
     public void setSelectedDevice(Device device) {
         this.selectedDevice = device;
         updateSelectedDeviceLabel();
+        if (deviceList != null && device != null) {
+            deviceList.getSelectionModel().select(device);
+        }
     }
 
     public void setCommunity(String community) {
@@ -485,16 +490,5 @@ public class SnmpController {
         if (communityField != null) {
             communityField.setText(this.community);
         }
-    }
-
-    @FXML
-    private void executeSet() {
-        if (selectedDevice == null || oidField == null || oidField.getText().isEmpty() || valueField == null || valueField.getText().isEmpty()) {
-            resultArea.setText("Veuillez sélectionner une machine, entrer un OID et une valeur.");
-            statusLabel.setText("Erreur : paramètres manquants");
-            return;
-        }
-        resultArea.setText("Exécution de Set sur " + selectedDevice.getName() + " avec OID " + oidField.getText() + " et valeur " + valueField.getText());
-        statusLabel.setText("Requête envoyée...");
     }
 }

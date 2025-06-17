@@ -6,8 +6,7 @@
 <BorderPane xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.example.tp_216_snmp.frontend.SnmpController"
-            stylesheets="@style.css"
-            maxWidth="1200" maxHeight="900" prefWidth="1200" prefHeight="900" minWidth="1200" minHeight="900">
+            stylesheets="@style.css">
 
     <!-- Top: Header -->
     <top>
@@ -17,7 +16,7 @@
                         text="← Retour"
                         onAction="#navigateToHome"
                         styleClass="action-button"
-                        prefWidth="150" prefHeight="40"/>
+                        minWidth="120" minHeight="40"/>
                 <Label text="Opération SNMP : Statistiques"
                        styleClass="header-title"
                        style="-fx-font-size: 24px; -fx-font-weight: bold;"
@@ -30,8 +29,12 @@
 
     <!-- Center: Formulaire Statistiques -->
     <center>
-        <VBox alignment="CENTER" spacing="80" style="-fx-padding: 40; -fx-font-size: 16px;">
+        <VBox alignment="CENTER" spacing="60" style="-fx-padding: 40; -fx-font-size: 16px;">
             <GridPane hgap="15" vgap="15" alignment="CENTER" style="-fx-padding: 20;">
+                <columnConstraints>
+                    <ColumnConstraints percentWidth="35"/>
+                    <ColumnConstraints percentWidth="65"/>
+                </columnConstraints>
 
                 <Label text="Machine sélectionnée :" styleClass="label" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
                 <Label fx:id="selectedDeviceLabel" text="Aucune machine sélectionnée" styleClass="value-label" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
@@ -40,16 +43,16 @@
                 <TextArea fx:id="resultArea"
                           editable="false"
                           wrapText="true"
-                          prefWidth="500"
-                          prefHeight="350"
                           style="-fx-control-inner-background: black; -fx-text-fill: lightblue; -fx-font-family: 'Consolas'; -fx-font-size: 16px;"
-                          GridPane.rowIndex="1"
-                          GridPane.columnIndex="1"/>
-
+                          GridPane.rowIndex="1" GridPane.columnIndex="1"/>
             </GridPane>
 
             <HBox spacing="20" alignment="CENTER">
-                <Button fx:id="executeGetButton" text="Exécuter Stat" onAction="#executeStat" styleClass="action-button" prefWidth="200" prefHeight="50"/>
+                <Button fx:id="executeStatButton"
+                        text="Exécuter Stat"
+                        onAction="#executeStat"
+                        styleClass="action-button"
+                        minWidth="200" minHeight="50"/>
             </HBox>
         </VBox>
     </center>

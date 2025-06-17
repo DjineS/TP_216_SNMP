@@ -3,28 +3,31 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<BorderPane maxWidth="1200" maxHeight="900" prefWidth="1200" prefHeight="900" minWidth="1200" minHeight="900" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="com.example.tp_216_snmp.frontend.SnmpController" stylesheets="@style.css">
+<BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.example.tp_216_snmp.frontend.SnmpController"
+            stylesheets="@style.css">
+
     <!-- Top: Header -->
     <top>
-        <VBox styleClass="header" VBox.vgrow="NEVER">
+        <VBox styleClass="header" VBox.vgrow="ALWAYS">
             <Label text="Administrateur Réseau SNMP" styleClass="header-title"/>
             <Separator/>
         </VBox>
     </top>
 
-    <!-- Center: Resizable Sidebar and Main Content -->
+    <!-- Center: Sidebar + Main -->
     <center>
-        <SplitPane dividerPositions="0.3" BorderPane.alignment="CENTER">
+        <SplitPane dividerPositions="0.3" prefWidth="1200" prefHeight="900" BorderPane.alignment="CENTER">
             <!-- Sidebar -->
-            <VBox styleClass="sidebar" spacing="10" style="-fx-padding: 10;" minWidth="400" maxWidth="400" VBox.vgrow="ALWAYS">
+            <VBox styleClass="sidebar" spacing="10" style="-fx-padding: 10;" VBox.vgrow="ALWAYS">
                 <Label text="Appareils Détectés" styleClass="sidebar-title"/>
-                <HBox spacing="5" alignment="CENTER_LEFT" HBox.hgrow="NEVER">
-                    <TextField fx:id="subnetField" promptText="Sous-réseau (ex: 192.168.1.0/24)" HBox.hgrow="NEVER" minWidth="150"/>
+                <HBox spacing="5" alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
+                    <TextField fx:id="subnetField" promptText="Sous-réseau (ex: 192.168.1.0/24)" HBox.hgrow="ALWAYS"/>
                     <CheckBox fx:id="showNamesCheckBox" text="Noms" onAction="#toggleNames"/>
                 </HBox>
-                <HBox spacing="5" alignment="CENTER_LEFT" HBox.hgrow="NEVER">
+                <HBox spacing="5" alignment="CENTER_LEFT" HBox.hgrow="ALWAYS">
                     <Label text="Communauté :" styleClass="label"/>
-                    <TextField fx:id="communityField" promptText="Entrer la communauté (défaut: uy1)" HBox.hgrow="NEVER" minWidth="250"/>
+                    <TextField fx:id="communityField" promptText="Entrer la communauté (défaut: uy1)" HBox.hgrow="ALWAYS"/>
                 </HBox>
                 <HBox spacing="5" alignment="CENTER_LEFT">
                     <Button fx:id="scanButton" text="Scanner" onAction="#scanNetwork" styleClass="action-button">
@@ -32,23 +35,25 @@
                     </Button>
                     <ProgressIndicator fx:id="scanProgress" visible="false" prefWidth="30" prefHeight="30"/>
                 </HBox>
-                <ListView fx:id="deviceList" VBox.vgrow="ALWAYS" minWidth="150" minHeight="200"/>
+                <ListView fx:id="deviceList" VBox.vgrow="ALWAYS"/>
             </VBox>
 
             <!-- Main Content -->
             <VBox alignment="CENTER" spacing="20" style="-fx-padding: 20;" VBox.vgrow="ALWAYS">
                 <Label text="Bienvenue dans l'Administrateur SNMP" styleClass="welcome-label"/>
-                <Label text="Configurez le sous-réseau, scannez, puis sélectionnez une machine et une opération." styleClass="info-label" wrapText="true" style="-fx-padding: 0 0 100 0;"/>
-                <GridPane fx:id="buttonGrid" hgap="20" vgap="20" alignment="CENTER">
+                <Label text="Configurez le sous-réseau, scannez, puis sélectionnez une machine et une opération."
+                       styleClass="info-label" wrapText="true" style="-fx-padding: 0 0 100 0;"/>
+                <GridPane fx:id="buttonGrid" hgap="20" vgap="20" alignment="CENTER" GridPane.hgrow="ALWAYS" GridPane.vgrow="ALWAYS">
                     <columnConstraints>
                         <ColumnConstraints percentWidth="33.33"/>
                         <ColumnConstraints percentWidth="33.33"/>
                         <ColumnConstraints percentWidth="33.33"/>
                     </columnConstraints>
                     <rowConstraints>
-                        <RowConstraints vgrow="NEVER"/>
-                        <RowConstraints vgrow="NEVER"/>
+                        <RowConstraints vgrow="ALWAYS"/>
+                        <RowConstraints vgrow="ALWAYS"/>
                     </rowConstraints>
+
                     <!-- Ligne 1 -->
                     <VBox alignment="CENTER" spacing="5" GridPane.rowIndex="0" GridPane.columnIndex="0">
                         <Button fx:id="getButton" text="Get" onAction="#navigateToGet" styleClass="action-button" prefWidth="200" prefHeight="80"/>
@@ -81,7 +86,7 @@
         </SplitPane>
     </center>
 
-    <!-- Bottom: Status Bar -->
+    <!-- Bottom: Status -->
     <bottom>
         <HBox styleClass="status-bar" alignment="CENTER_LEFT" style="-fx-padding: 5;" HBox.hgrow="ALWAYS">
             <Label fx:id="statusLabel" text="Prêt" HBox.hgrow="ALWAYS"/>

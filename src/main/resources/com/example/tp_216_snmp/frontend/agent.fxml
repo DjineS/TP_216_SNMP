@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+            fx:controller="com.example.tp_216_snmp.frontend.AgentController"
+            stylesheets="@style.css">
+
+    <!-- Top: Header -->
+    <top>
+        <VBox styleClass="header" VBox.vgrow="NEVER">
+            <Label text="Agent SNMP - Envoi de Traps" styleClass="header-title"/>
+            <Separator/>
+        </VBox>
+    </top>
+
+    <!-- Center: Trap Configuration and Send Button -->
+    <center>
+        <VBox alignment="CENTER" spacing="20" style="-fx-padding: 20;" VBox.vgrow="ALWAYS">
+            <Label text="Interface Agent SNMP" styleClass="welcome-label"/>
+            <Label text="Configurez les paramètres et envoyez un trap SNMP." styleClass="info-label" wrapText="true"/>
+            <GridPane hgap="10" vgap="10" alignment="CENTER">
+                <columnConstraints>
+                    <ColumnConstraints percentWidth="30"/>
+                    <ColumnConstraints percentWidth="70"/>
+                </columnConstraints>
+                <!-- IP de destination -->
+                <Label text="IP de destination :" styleClass="label" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                <TextField fx:id="trapDestinationField" promptText="Ex: 192.168.1.150" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+                <!-- Communauté -->
+                <Label text="Communauté :" styleClass="label" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                <TextField fx:id="communityField" promptText="Ex: uy1" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+                <!-- OID du trap -->
+                <Label text="OID du trap :" styleClass="label" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                <TextField fx:id="oidField" promptText="Ex: 1.3.6.1.6.3.1.1.5.1" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+                <!-- Message optionnel -->
+                <Label text="Message (optionnel) :" styleClass="label" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                <TextField fx:id="messageField" promptText="Message du trap (optionnel)" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+            </GridPane>
+            <Button fx:id="trapButton" text="Envoyer un Trap" onAction="#sendTrap"
+                    styleClass="action-button" prefWidth="200" prefHeight="50">
+                <tooltip><Tooltip text="Envoyer un trap SNMP à l'adresse spécifiée"/></tooltip>
+            </Button>
+        </VBox>
+    </center>
+
+    <!-- Bottom: Status Bar -->
+    <bottom>
+        <HBox styleClass="status-bar" alignment="CENTER_LEFT" style="-fx-padding: 5;" HBox.hgrow="ALWAYS">
+            <Label fx:id="statusLabel" text="Mode Agent : Envoi de traps uniquement" HBox.hgrow="ALWAYS"/>
+        </HBox>
+    </bottom>
+</BorderPane>
